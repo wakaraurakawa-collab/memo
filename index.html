@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>日記</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div id="app">
+  <header id="topbar">
+    <button id="prevDay" class="nav" aria-label="前の日">‹</button>
+    <button id="dateLabel" class="datebtn" aria-label="日付一覧を開く">----/--/--</button>
+    <button id="nextDay" class="nav" aria-label="次の日">›</button>
+    <span class="grow"></span>
+    <span id="saveState" class="savestate"></span>
+    <button id="openSearch" class="nav" aria-label="検索">検索</button>
+    <button id="openSettings" class="nav" aria-label="設定">設定</button>
+  </header>
+
+  <main>
+    <textarea id="editor" placeholder="今日のことを書く" autocomplete="off"></textarea>
+  </main>
+
+  <div id="stampbar">
+    <button id="stampBtn" class="stamp primary">打刻</button>
+    <button class="stamp" data-fmt="HH:mm:ss">秒まで</button>
+    <button class="stamp" data-fmt="YYYY/MM/DD(ddd)">日付</button>
+    <button id="stampMenuBtn" class="stamp" aria-label="打刻書式を選ぶ">…</button>
+  </div>
+</div>
+
+<div id="toast" hidden>
+  <span id="toastText"></span>
+  <button id="toastUndo" type="button">取り消す</button>
+</div>
+
+<!-- 日付一覧 -->
+<section id="listPanel" class="panel" hidden>
+  <header class="panelhead">
+    <strong>日付一覧</strong>
+    <span class="grow"></span>
+    <button class="close" data-close>閉じる</button>
+  </header>
+  <div id="listBody" class="panelbody"></div>
+</section>
+
+<!-- 検索 -->
+<section id="searchPanel" class="panel" hidden>
+  <header class="panelhead">
+    <strong>検索</strong>
+    <span class="grow"></span>
+    <button class="close" data-close>閉じる</button>
+  </header>
+  <div class="panelbody">
+    <input id="searchInput" type="search" placeholder="本文を検索" autocomplete="off">
+    <div id="searchBody"></div>
+  </div>
+</section>
+
+<!-- 打刻書式メニュー -->
+<section id="fmtPanel" class="panel" hidden>
+  <header class="panelhead">
+    <strong>この打刻の書式</strong>
+    <span class="grow"></span>
+    <button class="close" data-close>閉じる</button>
+  </header>
+  <div id="fmtBody" class="panelbody"></div>
+</section>
+
+<!-- 設定 -->
+<section id="settingsPanel" class="panel" hidden>
+  <header class="panelhead">
+    <strong>設定</strong>
+    <span class="grow"></span>
+    <button class="close" data-close>閉じる</button>
+  </header>
+  <div class="panelbody">
+
+    <h3>打刻</h3>
+    <label class="row">
+      <span>既定の書式</span>
+      <select id="setFormat"></select>
+    </label>
+    <p class="hint" id="formatPreview"></p>
+
+    <label class="row">
+      <span>挿入位置</span>
+      <select id="setInsertPos">
+        <option value="cursor">カーソル位置</option>
+        <option value="lineStart">その行の先頭</option>
+      </select>
+    </label>
+
+    <label class="row">
+      <span>段落を変えたら自動で打刻</span>
+      <input id="setAutoStamp" type="checkbox">
+    </label>
+    <p class="hint">改行を2回続けて新しい段落を始めたとき、行頭に時刻を入れます。</p>
+
+    <label class="row">
+      <span>F5 キーで打刻(PC)</span>
+      <input id="setF5" type="checkbox">
+    </label>
+    <p class="hint">本文を書いている間だけ F5 を打刻に使います。再読み込みは Ctrl / ⌘ + R でできます。打刻は Ctrl / ⌘ + ; でも入ります。</p>
+
+    <h3>展開キーワード</h3>
+    <p class="hint">本文に打ち込むと日時に変わる文字列です。変換で使いたい言葉が奪われるときは、書き換えるか削除してください。展開した直後は画面下の「取り消す」で戻せます。</p>
+    <div id="expList"></div>
+    <div class="btnrow">
+      <button id="expAdd" type="button">追加</button>
+      <button id="expPresetWord" type="button">日本語の語に戻す</button>
+      <button id="expPresetSymbol" type="button">記号に切り替え</button>
+    </div>
+    <p class="hint" id="expWarn"></p>
+
+    <h3>本文</h3>
+    <label class="row">
+      <span>1日の始まり</span>
+      <select id="setDayStart"></select>
+    </label>
+    <p class="hint">深夜に書いたものを前の日のページに入れたいときに使います。</p>
+
+    <label class="row">
+      <span>自動修正・自動大文字を使う</span>
+      <input id="setAutocorrect" type="checkbox">
+    </label>
+
+    <h3>バックアップ</h3>
+    <p class="hint" id="backupState"></p>
+    <div class="btnrow">
+      <button id="exportMd" type="button">Markdown で書き出す</button>
+      <button id="exportJson" type="button">JSON で書き出す</button>
+      <button id="importJson" type="button">JSON から復元</button>
+    </div>
+    <p class="hint">日記はこの端末のブラウザの中だけに保存されます。どこにも送信されません。ブラウザのデータを消すと日記も消えるため、ときどき書き出して保管してください。</p>
+    <p class="hint" id="usageState"></p>
+    <input id="importFile" type="file" accept="application/json,.json" hidden>
+
+  </div>
+</section>
+
+<script src="app.js"></script>
+</body>
+</html>
