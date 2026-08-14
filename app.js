@@ -749,6 +749,50 @@ $('expPresetSymbol').addEventListener('click', function () {
 
 // ---------------------------------------------------------------- 書き出し / 復元
 
+/*
+ * 埋め込み(iframe)の中ではブラウザがダウンロードを止めることがある。
+ * その場合は黙って何も起きないのではなく、内容をそのまま画面に出す。
+ * バックアップを取れないまま書き続けさせないため。
+ */
+var embedded = (function () {
+  try { return window.self !== window.top; } catch (e) { return true; }
+})();
+
+function deliver(text, filename, type) {
+  if (embedded) {
+    $('textTitle').textContent = filename;
+    $('textOut').value = text;
+    openPanel('textPanel');
+    data.lastBackupAt = new Date().toISOString();
+    saveSettings();
+    return;
+  }
+  download(text, filename, type);
+}
+
+$('textSelectAll').addEventListener('click', function () {
+  $('textOut').focus();
+  $('textOut').select();
+});
+
+$('textCopy').addEventListener('click', function () {
+  var el = $('textOut');
+  el.focus();
+  el.select();
+  var done = false;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(el.value).then(function () {
+      alert('コピーしました。');
+    }, function () {
+      if (!done) alert('コピーできませんでした。全部選んで手でコピーしてください。');
+    });
+    done = true;
+  } else {
+    try { done = document.execCommand('copy'); } catch (e) { done = false; }
+    alert(done ? 'コピーしました。' : 'コピーできませんでした。全部選んで手でコピーしてください。');
+  }
+});
+
 function download(text, filename, type) {
   var blob = new Blob([text], { type: type + ';charset=utf-8' });
   var url = URL.createObjectURL(blob);
@@ -781,12 +825,12 @@ $('exportMd').addEventListener('click', function () {
   var out = keys.map(function (k) {
     return '# ' + keyLabel(k) + '\n\n' + (data.entries[k].body || '').trim() + '\n';
   }).join('\n');
-  download(out || '', '日記-' + dateKeyOf(new Date(), settings.dayStartHour) + '.md', 'text/markdown');
+  deliver(out || '', '日記-' + dateKeyOf(new Date(), settings.dayStartHour) + '.md', 'text/markdown');
 });
 
 $('exportJson').addEventListener('click', function () {
   flushSave();
-  download(JSON.stringify(data, null, 2), '日記-' + dateKeyOf(new Date(), settings.dayStartHour) + '.json', 'application/json');
+  deliver(JSON.stringify(data, null, 2), '日記-' + dateKeyOf(new Date(), settings.dayStartHour) + '.json', 'application/json');
 });
 
 $('importJson').addEventListener('click', function () { $('importFile').click(); });

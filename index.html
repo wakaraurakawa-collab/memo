@@ -72,6 +72,23 @@
   <div id="fmtBody" class="panelbody"></div>
 </section>
 
+<!-- 書き出した内容(ファイルとして保存できない環境向け) -->
+<section id="textPanel" class="panel" hidden>
+  <header class="panelhead">
+    <strong id="textTitle">書き出した内容</strong>
+    <span class="grow"></span>
+    <button class="close" data-close>閉じる</button>
+  </header>
+  <div class="panelbody">
+    <p class="hint">この画面ではファイルとして保存できないため、内容をそのまま出しています。全部選んでコピーし、任意の場所に貼り付けて保管してください。</p>
+    <div class="btnrow">
+      <button id="textSelectAll" type="button">全部選ぶ</button>
+      <button id="textCopy" type="button">コピー</button>
+    </div>
+    <textarea id="textOut" readonly></textarea>
+  </div>
+</section>
+
 <!-- 設定 -->
 <section id="settingsPanel" class="panel" hidden>
   <header class="panelhead">

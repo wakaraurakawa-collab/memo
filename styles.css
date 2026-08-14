@@ -12,8 +12,12 @@
           "Hiragino Sans", "Yu Gothic", "Noto Sans JP", "Segoe UI", sans-serif;
 }
 
+/*
+ * 暗い配色。端末の設定に従う場合と、開いた側が明暗を指定してくる場合
+ * (埋め込みなど)の両方に対応するため、同じ値を二度置いている。
+ */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --bg: #16181a;
     --fg: #e6e6e6;
     --dim: #9a9a9a;
@@ -22,6 +26,16 @@
     --accent: #4d8fd6;
     --accent-fg: #101315;
   }
+}
+
+:root[data-theme="dark"] {
+  --bg: #16181a;
+  --fg: #e6e6e6;
+  --dim: #9a9a9a;
+  --line: #33373b;
+  --field: #212528;
+  --accent: #4d8fd6;
+  --accent-fg: #101315;
 }
 
 * { box-sizing: border-box; }
@@ -273,6 +287,24 @@ select, input[type="text"], input[type="search"], input[type="number"] {
 }
 
 #searchInput { max-width: none; width: 100%; margin-bottom: 12px; }
+
+#textOut {
+  width: 100%;
+  min-height: 50vh;
+  margin-top: 8px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--field);
+  color: var(--fg);
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.6;
+  resize: vertical;
+  white-space: pre;
+  overflow-wrap: normal;
+  overflow-x: auto;
+}
 
 input[type="checkbox"] { width: 20px; height: 20px; flex: 0 0 auto; }
 
