@@ -134,6 +134,37 @@ body { overflow: hidden; }
   border-bottom-color: #5a4325;
 }
 
+/* ---- 日付が変わったことの案内 ---- */
+
+#daybar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 9px 14px;
+  background: var(--field);
+  border-bottom: 1px solid var(--line);
+  color: var(--fg);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+#daybar[hidden] { display: none; }
+
+#daybar button {
+  appearance: none;
+  font-family: inherit;
+  font-size: 13px;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--fg);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
 /* ---- 本文 ---- */
 
 main {

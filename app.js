@@ -189,9 +189,21 @@ function openDay(key) {
   flushSave();
   currentKey = key;
   editor.value = bodyOf(key);
-  dateLabel.textContent = keyLabel(key);
+  dateLabel.textContent = keyLabel(key) + dayMarker(key);
   editor.setSelectionRange(editor.value.length, editor.value.length);
   setSaveState('');
+  $('daybar').hidden = true;
+}
+
+/*
+ * 今日かどうかを日付の横に出す。日付が変わって空のページが開いたとき、
+ * 「保存されなかった」ではなく「別の日を見ている」と読めるようにするため。
+ */
+function dayMarker(key) {
+  var today = dateKeyOf(new Date(), settings.dayStartHour);
+  if (key === today) return ' 今日';
+  if (key === shiftKey(today, -1)) return ' きのう';
+  return '';
 }
 
 // ---------------------------------------------------------------- 自動保存
@@ -1061,6 +1073,32 @@ $('diagCopy').addEventListener('click', function () {
 applyEditorAttrs();
 openDay(currentKey);
 syncViewport();
+
+/*
+ * 日付が変わると今日のページは空で開く。直前まで書いていた場合、これが
+ * 「保存されていない」と受け取られる。書いたものが残っていることを伝え、
+ * その日へ戻る手段をその場に出す。
+ */
+(function noticeDayChange() {
+  if (editor.value.trim()) return;
+
+  var keys = writtenKeys();          // 新しい順
+  if (!keys.length || keys[0] === currentKey) return;
+
+  var last = data.entries[keys[0]];
+  var hoursAgo = (Date.now() - new Date(last.updatedAt).getTime()) / 3600000;
+  if (!(hoursAgo >= 0) || hoursAgo > 18) return;   // だいぶ前ならわざわざ言わない
+
+  var bar = $('daybar');
+  bar.textContent = '日付が変わりました。' + keyLabel(keys[0]) + ' に書いた内容は残っています。';
+  var btn = document.createElement('button');
+  btn.type = 'button';
+  btn.textContent = 'そちらを開く';
+  btn.addEventListener('click', function () { openDay(keys[0]); });
+  bar.appendChild(btn);
+  bar.hidden = false;
+  syncViewport();
+})();
 
 if (!storageOk.ok) {
   showWarn('この画面では書いた内容が保存できません(' + storageOk.reason +
