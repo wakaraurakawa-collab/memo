@@ -60,6 +60,20 @@ var STAMP_FORMATS = [
   'YYYY-MM-DDTHH:mm:ss'
 ];
 
+// 例だけを並べると何の書式なのか読み取れないため、名前を添えて示す
+var FORMAT_NAMES = {
+  'HH:mm': '時刻',
+  'HH:mm:ss': '時刻・秒まで',
+  '[HH:mm]': '時刻・かっこつき',
+  'YYYY/MM/DD HH:mm': '日付と時刻',
+  'MM/DD(ddd) HH:mm': '日付・曜日と時刻',
+  'YYYY/MM/DD(ddd)': '日付のみ',
+  'YYYY-MM-DDTHH:mm:ss': 'ISO 8601'
+};
+
+function formatName(f) { return FORMAT_NAMES[f] || f; }
+function formatLabel(f) { return formatDate(f) + '(' + formatName(f) + ')'; }
+
 // ---------------------------------------------------------------- 保存
 
 /*
@@ -324,14 +338,14 @@ Array.prototype.forEach.call(document.querySelectorAll('#stampbar .stamp[data-fm
 $('stampMenuBtn').addEventListener('click', openFormatMenu);
 
 function openFormatMenu() {
-  var body = $('fmtBody');
+  var body = $('fmtList');
   body.innerHTML = '';
   STAMP_FORMATS.forEach(function (f) {
     var b = document.createElement('button');
     b.className = 'item';
     b.innerHTML = '<span class="d"></span><span class="p"></span>';
     b.querySelector('.d').textContent = formatDate(f);
-    b.querySelector('.p').textContent = f;
+    b.querySelector('.p').textContent = formatName(f);
     b.addEventListener('click', function () {
       closePanels();
       stamp(f);
@@ -572,11 +586,16 @@ function runSearch() {
 
 // ---------------------------------------------------------------- 設定
 
-$('openSettings').addEventListener('click', function () {
+function openSettings() {
   flushSave();
   renderSettings();
   openPanel('settingsPanel');
-});
+}
+
+$('openSettings').addEventListener('click', openSettings);
+
+// 1回だけの書式を選ぶ画面から、既定の書式の設定へ行けるようにする
+$('fmtToSettings').addEventListener('click', openSettings);
 
 function saveSettings() {
   persist();
@@ -588,7 +607,7 @@ function renderSettings() {
   STAMP_FORMATS.forEach(function (f) {
     var o = document.createElement('option');
     o.value = f;
-    o.textContent = formatDate(f);
+    o.textContent = formatLabel(f);
     sel.appendChild(o);
   });
   sel.value = settings.stampFormat;
@@ -691,7 +710,7 @@ function renderExpansions() {
     STAMP_FORMATS.forEach(function (f) {
       var o = document.createElement('option');
       o.value = f;
-      o.textContent = formatDate(f);
+      o.textContent = formatLabel(f);
       v.appendChild(o);
     });
     v.value = exp.format || '';

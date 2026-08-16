@@ -65,11 +65,17 @@
 <!-- 打刻書式メニュー -->
 <section id="fmtPanel" class="panel" hidden>
   <header class="panelhead">
-    <strong>この打刻の書式</strong>
+    <strong>1回だけの書式</strong>
     <span class="grow"></span>
     <button class="close" data-close>閉じる</button>
   </header>
-  <div id="fmtBody" class="panelbody"></div>
+  <div class="panelbody">
+    <p class="hint">選ぶと、その書式で<strong>いま1回だけ</strong>打刻します。いつも使う書式は変わりません。</p>
+    <div class="btnrow">
+      <button id="fmtToSettings" type="button">いつもの書式を変える</button>
+    </div>
+    <div id="fmtList"></div>
+  </div>
 </section>
 
 <!-- 書き出した内容(ファイルとして保存できない環境向け) -->
