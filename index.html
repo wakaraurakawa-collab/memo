@@ -22,6 +22,8 @@
     <button id="openSettings" class="nav" aria-label="設定">設定</button>
   </header>
 
+  <div id="warnbar" hidden></div>
+
   <main>
     <textarea id="editor" placeholder="今日のことを書く" autocomplete="off"></textarea>
   </main>
@@ -153,6 +155,13 @@
       <span>自動修正・自動大文字を使う</span>
       <input id="setAutocorrect" type="checkbox">
     </label>
+
+    <h3>保存の状態</h3>
+    <p class="hint" id="diagBody">確認しています…</p>
+    <div class="btnrow">
+      <button id="diagTest" type="button">保存できるか試す</button>
+      <button id="diagCopy" type="button">この内容をコピー</button>
+    </div>
 
     <h3>バックアップ</h3>
     <p class="hint" id="backupState"></p>

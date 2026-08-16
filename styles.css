@@ -106,6 +106,34 @@ body { overflow: hidden; }
 }
 .savestate.error { color: #c0392b; }
 
+/* ---- 警告バー(保存できないときだけ出す) ---- */
+
+#warnbar {
+  flex: 0 0 auto;
+  padding: 10px 14px;
+  background: #fdf0e6;
+  color: #7a3b0d;
+  border-bottom: 1px solid #e8c8a8;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+#warnbar[hidden] { display: none; }
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) #warnbar {
+    background: #3a2a18;
+    color: #f0c795;
+    border-bottom-color: #5a4325;
+  }
+}
+
+:root[data-theme="dark"] #warnbar {
+  background: #3a2a18;
+  color: #f0c795;
+  border-bottom-color: #5a4325;
+}
+
 /* ---- 本文 ---- */
 
 main {
@@ -287,6 +315,9 @@ select, input[type="text"], input[type="search"], input[type="number"] {
 }
 
 #searchInput { max-width: none; width: 100%; margin-bottom: 12px; }
+
+/* 診断は1項目1行で読ませる */
+#diagBody { white-space: pre-line; }
 
 #textOut {
   width: 100%;

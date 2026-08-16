@@ -82,12 +82,28 @@ function formatLabel(f) { return formatDate(f) + '(' + formatName(f) + ')'; }
  */
 var STORAGE_KEY = 'timestamp-diary-v1';
 
+// 読み込み時に起きた問題。起動後に利用者へ伝える
+var loadIssue = null;
+
 var Store = {
   read: function () {
+    var raw;
     try {
-      var raw = localStorage.getItem(STORAGE_KEY);
-      return raw ? JSON.parse(raw) : null;
+      raw = localStorage.getItem(STORAGE_KEY);
     } catch (e) {
+      loadIssue = 'ブラウザが保存領域を使わせてくれませんでした';
+      return null;
+    }
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw);
+    } catch (e) {
+      /*
+       * 壊れた内容をそのまま捨てると、書いたものが黙って消える。
+       * 退避してから初期状態で立ち上げ、消えたことを必ず伝える。
+       */
+      loadIssue = '保存されていた内容を読み取れませんでした';
+      try { localStorage.setItem(STORAGE_KEY + '-broken-' + Date.now(), raw); } catch (e2) {}
       return null;
     }
   },
@@ -202,6 +218,7 @@ function scheduleSave() {
  */
 function persist() {
   try {
+    data.lastSavedAt = new Date().toISOString();
     Store.write(data);
     setSaveState('保存済み');
     return true;
@@ -637,6 +654,7 @@ function renderSettings() {
 
   renderExpansions();
   renderBackupState();
+  renderDiagnostics();
 }
 
 $('setFormat').addEventListener('change', function () {
@@ -838,14 +856,18 @@ function download(text, filename, type) {
   renderBackupState();
 }
 
+function usageText() {
+  var bytes = Store.bytes();
+  return bytes < 1024 ? bytes + 'バイト' : Math.round(bytes / 1024) + 'KB';
+}
+
 function renderBackupState() {
   $('backupState').textContent = data.lastBackupAt
     ? '最後に書き出したのは ' + formatDate('YYYY/MM/DD HH:mm', new Date(data.lastBackupAt)) + ' です。'
     : 'まだ一度も書き出していません。';
 
-  var kb = Math.round(Store.bytes() / 1024);
-  var note = kb > 4096 ? ' 上限が近づいています。書き出して整理してください。' : '';
-  $('usageState').textContent = '記録している日数: ' + writtenKeys().length + '日 / 使用量: 約 ' + kb + 'KB。' + note;
+  var note = Store.bytes() > 4 * 1024 * 1024 ? ' 上限が近づいています。書き出して整理してください。' : '';
+  $('usageState').textContent = '記録している日数: ' + writtenKeys().length + '日 / 使用量: 約 ' + usageText() + '。' + note;
 }
 
 $('exportMd').addEventListener('click', function () {
@@ -953,8 +975,99 @@ document.addEventListener('visibilitychange', function () {
   if (today !== currentKey && !editor.value.trim()) openDay(today);
 });
 
+// ---------------------------------------------------------------- 保存の診断
+
+/*
+ * 「書いたのに消えた」は最悪の欠陥なので、保存できるかどうかを起動時に
+ * 実際に試し、駄目なら黙って書かせ続けずに画面上で伝える。
+ */
+function probeStorage() {
+  var probeKey = STORAGE_KEY + '-probe';
+  try {
+    if (typeof localStorage === 'undefined' || !localStorage) {
+      return { ok: false, reason: 'この画面ではブラウザの保存領域を使えません' };
+    }
+    localStorage.setItem(probeKey, 'x');
+    var back = localStorage.getItem(probeKey);
+    localStorage.removeItem(probeKey);
+    if (back !== 'x') return { ok: false, reason: '書き込んだ内容を読み戻せません' };
+    return { ok: true, reason: '保存できます' };
+  } catch (e) {
+    var name = e && e.name;
+    if (name === 'QuotaExceededError' || name === 'NS_ERROR_DOM_QUOTA_REACHED') {
+      return { ok: false, reason: '保存容量がいっぱいです' };
+    }
+    return { ok: false, reason: 'ブラウザが保存を許可していません(プライベートブラウズなど)' };
+  }
+}
+
+var storageOk = probeStorage();
+var persistGranted = null;
+
+// 端末に「このデータを消さないでほしい」と申告できる場合はしておく
+if (navigator.storage && navigator.storage.persist) {
+  try {
+    navigator.storage.persist().then(function (granted) {
+      persistGranted = granted;
+    }, function () { persistGranted = false; });
+  } catch (e) { persistGranted = false; }
+}
+
+function showWarn(message) {
+  $('warnbar').textContent = message;
+  $('warnbar').hidden = false;
+  syncViewport();
+}
+
+function diagnosticsText() {
+  var lines = [];
+  lines.push('保存: ' + storageOk.reason);
+  lines.push('開き方: ' + (embedded ? 'ページに埋め込まれた状態(保存が消えやすい)' : '通常のページ'));
+  lines.push('保存先: ' + location.origin + location.pathname);
+  lines.push('記録している日数: ' + writtenKeys().length + '日');
+  lines.push('使用量: 約 ' + usageText());
+  lines.push('最後に保存した時刻: ' +
+    (data.lastSavedAt ? formatDate('YYYY/MM/DD HH:mm:ss', new Date(data.lastSavedAt)) : 'まだ保存していません'));
+  lines.push('保存の保持を端末に申告: ' +
+    (persistGranted === null ? 'この端末では申告できません' : persistGranted ? '受け入れられました' : '断られました'));
+  if (loadIssue) lines.push('起動時の問題: ' + loadIssue);
+  return lines.join('\n');
+}
+
+function renderDiagnostics() {
+  $('diagBody').textContent = diagnosticsText();
+}
+
+$('diagTest').addEventListener('click', function () {
+  storageOk = probeStorage();
+  renderDiagnostics();
+  alert(storageOk.ok
+    ? 'この画面では保存できています。\n再読み込みしても内容は残るはずです。'
+    : '保存できません。\n' + storageOk.reason);
+});
+
+$('diagCopy').addEventListener('click', function () {
+  var text = diagnosticsText();
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(function () { alert('コピーしました。'); },
+      function () { alert(text); });
+  } else {
+    alert(text);
+  }
+});
+
 // ---------------------------------------------------------------- 起動
 
 applyEditorAttrs();
 openDay(currentKey);
 syncViewport();
+
+if (!storageOk.ok) {
+  showWarn('この画面では書いた内容が保存できません(' + storageOk.reason +
+           ')。閉じると消えます。設定から書き出して保管してください。');
+} else if (loadIssue) {
+  showWarn(loadIssue + '。空の状態で開いています。上書きされる前に、設定から書き出して確認してください。');
+} else if (embedded) {
+  showWarn('この画面は埋め込みで動いているため、保存した内容がブラウザに消されることがあります。'
+         + '続けて使うなら、埋め込みでない URL から開いてください。');
+}
