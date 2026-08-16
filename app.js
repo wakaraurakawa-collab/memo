@@ -98,7 +98,7 @@ function defaultData() {
       dayStartHour: 0,
       autocorrect: false,
       expansions: [
-        { key: 'いま', format: 'HH:mm' },
+        { key: 'いま', format: '' },
         { key: 'きょう', format: 'YYYY/MM/DD(ddd)' }
       ]
     },
@@ -108,12 +108,12 @@ function defaultData() {
 }
 
 var PRESET_WORD = [
-  { key: 'いま', format: 'HH:mm' },
+  { key: 'いま', format: '' },
   { key: 'きょう', format: 'YYYY/MM/DD(ddd)' }
 ];
 
 var PRESET_SYMBOL = [
-  { key: ';t', format: 'HH:mm' },
+  { key: ';t', format: '' },
   { key: ';s', format: 'HH:mm:ss' },
   { key: ';d', format: 'YYYY/MM/DD(ddd)' }
 ];
@@ -288,9 +288,9 @@ editor.addEventListener('compositionend', function () {
 // ---------------------------------------------------------------- 打刻
 
 function stamp(format) {
-  if (composing) { pendingStamp = format || settings.stampFormat; return; }
+  if (composing) { pendingStamp = formatFor(format); return; }
 
-  var text = formatDate(format || settings.stampFormat) + ' ';
+  var text = formatDate(formatFor(format)) + ' ';
   if (settings.insertPosition === 'lineStart') {
     var p = lineStartOf(editor.selectionStart);
     replaceRange(p, p, text);
@@ -315,19 +315,15 @@ Array.prototype.forEach.call(document.querySelectorAll('#stampbar .stamp[data-fm
   b.addEventListener('click', function () { stamp(b.getAttribute('data-fmt')); });
 });
 
-// 長押し / … で書式メニュー
-var pressTimer = null;
-$('stampBtn').addEventListener('pointerdown', function () {
-  clearTimeout(pressTimer);
-  pressTimer = setTimeout(openFormatMenu, 550);
-});
-['pointerup', 'pointerleave', 'pointercancel'].forEach(function (ev) {
-  $('stampBtn').addEventListener(ev, function () { clearTimeout(pressTimer); });
-});
+/*
+ * 書式メニューは「…」だけで開く。
+ * 打刻ボタンの長押しにも割り当てていたが、スマートフォンでは指を置く時間が
+ * 簡単に長押しの閾値を越えてしまい、押したのに打刻が入らない事故が起きた。
+ * 主要な操作に、押し方で結果が変わる仕掛けを持たせない。
+ */
 $('stampMenuBtn').addEventListener('click', openFormatMenu);
 
 function openFormatMenu() {
-  clearTimeout(pressTimer);
   var body = $('fmtBody');
   body.innerHTML = '';
   STAMP_FORMATS.forEach(function (f) {
@@ -347,9 +343,14 @@ function openFormatMenu() {
 
 // ---------------------------------------------------------------- 展開キーワード
 
+// 書式が空の場合は「既定の書式に従う」の意味
+function formatFor(f) {
+  return f || settings.stampFormat;
+}
+
 function activeExpansions() {
   return (settings.expansions || [])
-    .filter(function (e) { return e && e.key && e.format; })
+    .filter(function (e) { return e && e.key; })
     // 長い方を先に見る。ただし短い方が先頭一致すると先に発火する点は設定画面で警告する
     .sort(function (a, b) { return b.key.length - a.key.length; });
 }
@@ -364,7 +365,7 @@ function tryExpand() {
     var key = list[i].key;
     if (before.length < key.length || before.slice(-key.length) !== key) continue;
 
-    var out = formatDate(list[i].format);
+    var out = formatDate(formatFor(list[i].format));
     var start = caret - key.length;
     replaceRange(start, caret, out);
     scheduleSave();
@@ -591,7 +592,12 @@ function renderSettings() {
     sel.appendChild(o);
   });
   sel.value = settings.stampFormat;
-  if (sel.value !== settings.stampFormat) sel.value = STAMP_FORMATS[0];
+  if (sel.selectedIndex < 0) {
+    // 保存されている書式が一覧にない。表示だけ直しても実際の打刻とずれるので設定ごと戻す
+    settings.stampFormat = STAMP_FORMATS[0];
+    sel.value = settings.stampFormat;
+    saveSettings();
+  }
   $('formatPreview').textContent = '今なら「' + formatDate(settings.stampFormat) + '」と入ります。';
 
   $('setInsertPos').value = settings.insertPosition;
@@ -678,14 +684,18 @@ function renderExpansions() {
 
     var v = document.createElement('select');
     v.className = 'v';
+    var follow = document.createElement('option');
+    follow.value = '';
+    follow.textContent = '既定の書式に従う';
+    v.appendChild(follow);
     STAMP_FORMATS.forEach(function (f) {
       var o = document.createElement('option');
       o.value = f;
       o.textContent = formatDate(f);
       v.appendChild(o);
     });
-    v.value = exp.format;
-    if (v.value !== exp.format) v.value = STAMP_FORMATS[0];
+    v.value = exp.format || '';
+    if (v.selectedIndex < 0) v.value = '';
     v.addEventListener('change', function () {
       settings.expansions[i].format = v.value;
       saveSettings();
@@ -730,7 +740,7 @@ function updateExpWarning() {
 }
 
 $('expAdd').addEventListener('click', function () {
-  settings.expansions.push({ key: '', format: 'HH:mm' });
+  settings.expansions.push({ key: '', format: '' });
   saveSettings();
   renderExpansions();
 });
