@@ -98,13 +98,35 @@ body { overflow: hidden; }
   white-space: nowrap;
 }
 
-.savestate {
-  font-size: 12px;
-  color: var(--dim);
-  padding-right: 4px;
-  white-space: nowrap;
+/*
+ * 保存の状態は点で示す。以前は「保存済み」と「…」を出し分けていたが、
+ * 打鍵のたびに文字の幅が変わって上部バーがちらついた。
+ * 大きさも位置も変えず、色だけを静かに変える。
+ */
+.savedot {
+  flex: 0 0 auto;
+  width: 7px;
+  height: 7px;
+  margin: 0 8px;
+  border-radius: 50%;
+  background: var(--line);
+  transition: background-color .3s ease;
 }
-.savestate.error { color: #c0392b; }
+
+.savedot.pending { background: var(--dim); }
+.savedot.error { background: #c0392b; }
+
+@media (prefers-reduced-motion: reduce) {
+  .savedot { transition: none; }
+}
+
+/* 日付が長い端末でも上部バーを溢れさせない */
+.datebtn {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.nav { flex: 0 0 auto; }
 
 /* ---- 警告バー(保存できないときだけ出す) ---- */
 

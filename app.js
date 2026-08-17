@@ -191,7 +191,7 @@ function openDay(key) {
   editor.value = bodyOf(key);
   dateLabel.textContent = keyLabel(key) + dayMarker(key);
   editor.setSelectionRange(editor.value.length, editor.value.length);
-  setSaveState('');
+  setSaveState(bodyOf(key) ? 'saved' : 'idle');
   $('daybar').hidden = true;
 }
 
@@ -211,14 +211,22 @@ function dayMarker(key) {
 var saveTimer = null;
 var dirty = false;
 
-function setSaveState(text, isError) {
-  saveState.textContent = text;
-  saveState.classList.toggle('error', !!isError);
+var SAVE_LABELS = {
+  saved: '保存済み',
+  pending: '保存していません',
+  error: '保存できません',
+  idle: ''
+};
+
+function setSaveState(state) {
+  saveState.classList.toggle('pending', state === 'pending');
+  saveState.classList.toggle('error', state === 'error');
+  saveState.setAttribute('aria-label', SAVE_LABELS[state] || '');
 }
 
 function scheduleSave() {
   dirty = true;
-  setSaveState('…');
+  setSaveState('pending');
   clearTimeout(saveTimer);
   saveTimer = setTimeout(flushSave, 400);
 }
@@ -228,15 +236,24 @@ function scheduleSave() {
  * 本文を data へ写す責務は flushSave だけが持つ。設定の保存で本文が
  * 巻き添えになる事故(復元直後に空の本文で上書きする等)を防ぐため。
  */
+// 保存に失敗し続けても、打鍵のたびに知らせ直さない
+var saveFailureAnnounced = false;
+
 function persist() {
   try {
     data.lastSavedAt = new Date().toISOString();
     Store.write(data);
-    setSaveState('保存済み');
+    setSaveState('saved');
+    saveFailureAnnounced = false;
     return true;
   } catch (e) {
-    setSaveState('保存できません', true);
-    alert('保存できませんでした。保存容量がいっぱいの可能性があります。\n設定から書き出して、不要な日を整理してください。');
+    setSaveState('error');
+    if (!saveFailureAnnounced) {
+      saveFailureAnnounced = true;
+      showWarn('保存できませんでした。書いた内容が失われるおそれがあります。'
+             + '設定から書き出して保管してください。');
+      alert('保存できませんでした。保存容量がいっぱいの可能性があります。\n設定から書き出して、不要な日を整理してください。');
+    }
     return false;
   }
 }
@@ -249,7 +266,7 @@ function flushSave() {
   var now = new Date().toISOString();
   var entry = data.entries[currentKey];
 
-  if (!body.trim() && !entry) { dirty = false; setSaveState(''); return; }
+  if (!body.trim() && !entry) { dirty = false; setSaveState('idle'); return; }
 
   if (!entry) {
     entry = data.entries[currentKey] = { date: currentKey, body: '', createdAt: now, updatedAt: now };
